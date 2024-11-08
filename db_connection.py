@@ -1,9 +1,9 @@
 import psycopg2
-from psycopg2 import sql, OperationalError
+from psycopg2 import OperationalError
 
-def connect_and_query():
+def run_query(ordernumber):
     try:
-        # Establish the connection
+        # Establish the database connection
         connection = psycopg2.connect(
             host="your_host",         # e.g., 'localhost' or database server IP
             database="your_database", # replace with your database name
@@ -14,16 +14,35 @@ def connect_and_query():
         # Create a cursor to execute SQL queries
         cursor = connection.cursor()
 
-        # Define the SQL query
-        query = "SELECT * FROM your_table LIMIT 10;"  # Modify query as needed
+        # Define the SQL query with a placeholder for ordernumber
+        query = """
+            -- Step the cancel
+            SELECT 
+                ordernumber,
+                task_id,
+                taskname,
+                status,
+                user_id,
+                task_type,
+                parenttask_name,
+                taskgroup_id
+            FROM 
+                vlocal.task
+            WHERE 
+                ordernumber = %s
+                AND status IN ('READY', 'ACQUIRED')
+                -- Uncomment below lines for additional filters
+                -- AND taskname = 'IASA Task'
+                -- AND taskname = 'CANCEL Order error Check comments'
+            ORDER BY 
+                1;
+        """
 
-        # Execute the query
-        cursor.execute(query)
+        # Execute the query with the provided ordernumber
+        cursor.execute(query, (ordernumber,))
 
-        # Fetch the results
+        # Fetch and print the results
         records = cursor.fetchall()
-
-        # Print the results
         for row in records:
             print(row)
 
@@ -37,5 +56,6 @@ def connect_and_query():
             connection.close()
             print("Database connection closed.")
 
-# Run the function
-connect_and_query()
+# Prompt for input and run the query
+user_ordernumber = input("Enter the ordernumber: ")
+run_query(user_ordernumber)
