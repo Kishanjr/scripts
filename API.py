@@ -1,61 +1,78 @@
+from flask import Flask, request, jsonify
 import psycopg2
 from psycopg2 import OperationalError
 
-def run_query(ordernumber):
+app = Flask(__name__)
+
+def update_automation_audit(data):
+    """
+    Updates or inserts a record in the automation_audit table.
+    :param data: Dictionary containing the data for each column
+    """
     try:
         # Establish the database connection
         connection = psycopg2.connect(
-            host="your_host",         # e.g., 'localhost' or database server IP
-            database="your_database", # replace with your database name
-            user="your_username",     # replace with your username
-            password="your_password"  # replace with your password
+            host="localhost",         # Adjust if necessary
+            database="test_db",       # Use the test database
+            user="your_username",     # Replace with your PostgreSQL username
+            password="your_password"  # Replace with your PostgreSQL password
         )
 
         # Create a cursor to execute SQL queries
         cursor = connection.cursor()
 
-        # Define the SQL query with a placeholder for ordernumber
-        query = """
-            -- Step the cancel
-            SELECT 
-                ordernumber,
-                task_id,
-                taskname,
-                status,
-                user_id,
-                task_type,
-                parenttask_name,
-                taskgroup_id
-            FROM 
-                vlocal.task
-            WHERE 
-                ordernumber = %s
-                AND status IN ('READY', 'ACQUIRED')
-                -- Uncomment below lines for additional filters
-                -- AND taskname = 'IASA Task'
-                -- AND taskname = 'CANCEL Order error Check comments'
-            ORDER BY 
-                1;
+        # Define the SQL query to update the automation_audit table
+        update_query = """
+            INSERT INTO automation_audit (entity_type, entity_value, ticket, channel, description, vast_id, updated_time)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            ON CONFLICT (entity_value) DO UPDATE SET
+                entity_type = EXCLUDED.entity_type,
+                ticket = EXCLUDED.ticket,
+                channel = EXCLUDED.channel,
+                description = EXCLUDED.description,
+                vast_id = EXCLUDED.vast_id,
+                updated_time = NOW();
         """
 
-        # Execute the query with the provided ordernumber
-        cursor.execute(query, (ordernumber,))
+        # Execute the query with data from the API request
+        cursor.execute(update_query, (
+            data.get('entity_type'),
+            data.get('entity_value'),
+            data.get('ticket'),
+            data.get('channel'),
+            data.get('description'),
+            data.get('vast_id')
+        ))
 
-        # Fetch and print the results
-        records = cursor.fetchall()
-        for row in records:
-            print(row)
+        # Commit the transaction
+        connection.commit()
+
+        return {"message": "Record updated successfully."}
 
     except OperationalError as e:
-        print(f"An error occurred: {e}")
+        return {"error": f"Database connection error: {e}"}
 
     finally:
         # Close the cursor and connection
         if connection:
             cursor.close()
             connection.close()
-            print("Database connection closed.")
 
-# Prompt for input and run the query
-user_ordernumber = input("Enter the ordernumber: ")
-run_query(user_ordernumber)
+@app.route('/update_audit', methods=['POST'])
+def update_audit():
+    data = request.get_json()
+
+    # Validate required fields
+    required_fields = ['entity_type', 'entity_value', 'ticket', 'channel', 'description', 'vast_id']
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        return jsonify({"error": f"Missing fields: {', '.join(missing_fields)}"}), 400
+
+    # Update the database
+    response = update_automation_audit(data)
+    
+    return jsonify(response)
+
+if __name__ == '__main__':
+    app.run(debug=True)
