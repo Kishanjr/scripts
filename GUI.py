@@ -21,15 +21,22 @@ def give_access():
 root = tk.Tk()
 root.title("User Access Management")
 
-# Create and place widgets
-label = tk.Label(root, text="Enter User ID(s):")
-label.pack(pady=5)
+# Set the size of the window
+root.geometry("400x200")  # Width x Height
 
-entry = tk.Entry(root, width=50)
-entry.pack(pady=5)
+# Create and place widgets with padding
+label = tk.Label(root, text="Enter User ID(s):", font=("Arial", 12))
+label.pack(pady=(10, 5))  # Top and bottom padding
 
-button = tk.Button(root, text="Grant Access", command=give_access)
+entry = tk.Entry(root, width=40, font=("Arial", 12))
+entry.pack(pady=(5, 10))  # Top and bottom padding
+
+button = tk.Button(root, text="Grant Access", font=("Arial", 12), command=give_access)
 button.pack(pady=10)
+
+# Add some extra padding to the entire window
+for widget in [label, entry, button]:
+    widget.pack_configure(padx=20)
 
 # Run the application
 root.mainloop()
