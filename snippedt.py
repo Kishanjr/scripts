@@ -35,16 +35,15 @@ def main():
 
         # Append or create the Excel file dynamically
         try:
-            # Load existing workbook
-            with pd.ExcelWriter(file_path, mode="a", engine="openpyxl") as writer:
-                # Check if the sheet already exists
-                book = load_workbook(file_path)
-                if sheet_name in book.sheetnames:
-                    start_row = book[sheet_name].max_row  # Find next empty row
-                    df.to_excel(writer, index=False, header=False, startrow=start_row, sheet_name=sheet_name)
-                else:
-                    # Create a new sheet with the specified name
-                    df.to_excel(writer, index=False, sheet_name=sheet_name)
+            # Open the file and append data
+            with pd.ExcelWriter(file_path, mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
+                df.to_excel(writer, index=False, header=False, sheet_name=sheet_name)
+        except ValueError as e:
+            # Handle if the sheet does not exist
+            if "already exists" in str(e):
+                print(f"Error: {sheet_name} already exists. Overwriting is not allowed.")
+            else:
+                raise
         except FileNotFoundError:
             # If the file does not exist, create it and write data
             with pd.ExcelWriter(file_path, mode="w", engine="openpyxl") as writer:
