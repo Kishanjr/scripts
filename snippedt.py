@@ -33,20 +33,21 @@ def main():
         # Define dynamic sheet name
         sheet_name = f"{app}"  # Use `app` as the dynamic sheet name
 
-        # Append or create the Excel file dynamically
         try:
-            # Open the file and append data
-            with pd.ExcelWriter(file_path, mode="a", engine="openpyxl", if_sheet_exists="overlay") as writer:
-                df.to_excel(writer, index=False, header=False, sheet_name=sheet_name)
-        except ValueError as e:
-            # Handle if the sheet does not exist
-            if "already exists" in str(e):
-                print(f"Error: {sheet_name} already exists. Overwriting is not allowed.")
-            else:
-                raise
+            # Open the workbook if it exists
+            book = load_workbook(file_path)
+            with pd.ExcelWriter(file_path, engine="openpyxl", mode="a", if_sheet_exists="overlay") as writer:
+                # If sheet exists, find the next empty row
+                if sheet_name in book.sheetnames:
+                    sheet = book[sheet_name]
+                    start_row = sheet.max_row
+                    df.to_excel(writer, index=False, header=False, startrow=start_row, sheet_name=sheet_name)
+                else:
+                    # Create new sheet and write data
+                    df.to_excel(writer, index=False, sheet_name=sheet_name)
         except FileNotFoundError:
             # If the file does not exist, create it and write data
-            with pd.ExcelWriter(file_path, mode="w", engine="openpyxl") as writer:
+            with pd.ExcelWriter(file_path, engine="openpyxl", mode="w") as writer:
                 df.to_excel(writer, index=False, sheet_name=sheet_name)
 
         print(f"Iteration {iteration}: Data written to sheet '{sheet_name}' in Excel.")
