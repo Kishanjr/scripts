@@ -8,15 +8,17 @@ sheet_with_emails = "Sheet1"  # Replace with the sheet containing the list of em
 # Read the sheet with emails into a pandas DataFrame
 emails_df = pd.read_excel(file_path, sheet_name=sheet_with_emails)
 
-# Normalize emails for comparison
-list_of_emails = emails_df['Email'].str.strip().str.lower().tolist()
+# Preprocess emails: Remove domain part and normalize
+list_of_emails = emails_df['Email'].str.split('@').str[0].str.strip().str.lower().tolist()
 
 # Load the workbook
 wb = load_workbook(file_path)
 
-# Function to check for email match
+# Function to preprocess and compare emails
 def is_email_match(cell_value, email_list):
-    return cell_value.strip().lower() in email_list
+    # Remove the domain part from the email
+    local_part = cell_value.split('@')[0].strip().lower()
+    return local_part in email_list
 
 # Process all sheets except the one containing the emails
 for sheet_name in wb.sheetnames:
@@ -29,8 +31,8 @@ for sheet_name in wb.sheetnames:
     # Create a new column header for the flag
     ws.cell(row=1, column=ws.max_column + 1, value="Flag")  # Add "Flag" column
 
-    # Add flags for each email in the specified column (adjust column as needed)
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=2, max_col=2), start=2):  # Assuming emails are in Column B
+    # Add flags for each email in Column D (4th column)
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=4, max_col=4), start=2):
         for cell in row:
             flag_cell = ws.cell(row=row_idx, column=ws.max_column)  # Add flag in the new column
             if cell.value and is_email_match(str(cell.value), list_of_emails):
