@@ -1,0 +1,41 @@
+function sendEmails() {
+  // Open the active spreadsheet and sheet
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  
+  // Get all the data from the sheet
+  var data = sheet.getDataRange().getValues();
+  
+  // Loop through each row (starting from row 2 to skip headers)
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var cilli = row[0]; // Column A
+    var ip = row[1]; // Column B
+    var email = row[2]; // Column C
+    var cc = row[3]; // Column D
+    var body = row[4]; // Column E
+
+    // Skip the row if the email is empty or 'none'
+    if (!email || email.trim() === "" || email.toLowerCase() === "none") {
+      Logger.log("Skipped row " + (i + 1) + " due to missing or invalid email.");
+      continue;
+    }
+
+    // Subject line for the email
+    var subject = "Automated Email: " + cilli;
+
+    // Include cilli and ip dynamically in the body
+    var dynamicBody = "Hello,\n\n" +
+                      "Here is your information:\n" +
+                      "Cilli: " + cilli + "\n" +
+                      "IP: " + ip + "\n\n" +
+                      body;
+
+    // Send the email
+    GmailApp.sendEmail(email, subject, dynamicBody, {
+      cc: cc
+    });
+
+    // Log the progress
+    Logger.log("Email sent to: " + email);
+  }
+}
