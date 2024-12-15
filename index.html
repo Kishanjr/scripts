@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Management Tool</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Task Management Tool</h1>
+  </header>
+
+  <div class="container">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <ul>
+        <li><a href="#" onclick="loadSection('ticketGW')">Ticket GW</a></li>
+        <li><a href="#" onclick="loadSection('systemRefresh')">System Refresh</a></li>
+        <li><a href="#" onclick="loadSection('deleteBundles')">Delete Bundles</a></li>
+        <li><a href="#" onclick="loadSection('billingActivation')">Billing Activation</a></li>
+        <li><a href="#" onclick="loadSection('taskCompletion')">Task Completion</a></li>
+        <li><a href="#" onclick="loadSection('errorTracking')">Error Tracking</a></li>
+        <li><a href="#" onclick="loadSection('specUpdate')">Spec Update</a></li>
+        <li><a href="#" onclick="loadSection('statusQuery')">Status/Errors Query</a></li>
+        <li><a href="#" onclick="loadSection('infoSelect')">Info/Select</a></li>
+      </ul>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="main-content">
+      <h2>Welcome to the Task Management Tool</h2>
+      <p>Select a task from the sidebar to get started.</p>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
