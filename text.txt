@@ -1,0 +1,9 @@
+# Create the main project folder
+mkdir project
+
+# Navigate into the project folder
+cd project
+
+# Create the required files and folders
+touch index.html styles.css script.js
+mkdir assets
