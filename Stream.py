@@ -42,7 +42,6 @@ def login_page():
         if authenticate_user(username, password):
             st.session_state["authenticated"] = True
             st.success("Logged in successfully!")
-            st.experimental_rerun()
         else:
             st.error("Invalid username or password")
 
@@ -68,9 +67,13 @@ def database_view_page():
     conn = get_db_connection()
     if conn:
         query = "SELECT * FROM my_table"  # Replace with your table name
-        df = pd.read_sql(query, conn)
-        st.dataframe(df)  # Display the table in a DataFrame
-        conn.close()
+        try:
+            df = pd.read_sql(query, conn)
+            st.dataframe(df)  # Display the table in a DataFrame
+        except Exception as e:
+            st.error(f"Error executing query: {e}")
+        finally:
+            conn.close()
 
 # ------------------------------- #
 # MAIN APPLICATION
@@ -94,8 +97,10 @@ def main():
     elif menu == "Database View":
         database_view_page()
     elif menu == "Logout":
-        st.session_state["authenticated"] = False
-        st.experimental_rerun()
+        # Reset session state and clear UI
+        st.session_state.clear()
+        st.write("You have been logged out. Please refresh the page to log in again.")
+        st.stop()
 
 # Run the app
 if __name__ == "__main__":
