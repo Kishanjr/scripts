@@ -126,6 +126,19 @@ def main():
         st.session_state.clear()
         st.write("You have been logged out. Please refresh the page to log in again.")
         st.stop()
+def get_table_names():
+    conn = get_db_connection()
+    if conn:
+        try:
+            result = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema='public'"))
+            tables = [row[0] for row in result.fetchall()]
+            conn.close()
+            return tables
+        except Exception as e:
+            st.error(f"Error fetching table names: {e}")
+            return []
+    else:
+        return []
 
 # Run the app
 if __name__ == "__main__":
