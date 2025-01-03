@@ -75,31 +75,39 @@ def system_refresh_page():
             st.warning("Please provide additional input.")
 
 # ------------------------------- #
-# DATABASE VIEW PAGE (PostgreSQL using SQLAlchemy)
+# FUNCTION TO FETCH SCHEMAS
 # ------------------------------- #
-def database_view_page():
-    st.header("Database View")
-    tables = get_table_names()
+def get_schema_names():
+    conn = get_db_connection()
+    if conn:
+        try:
+            result = conn.execute(text("SELECT schema_name FROM information_schema.schemata"))
+            schemas = [row[0] for row in result.fetchall()]
+            conn.close()
+            return schemas
+        except Exception as e:
+            st.error(f"Error fetching schemas: {e}")
+            return []
+    else:
+        return []
 
-    if not tables:
-        st.error("No tables found in the database.")
-        return
-
-    # Allow user to select a table
-    selected_table = st.selectbox("Select a Table:", tables)
-
-    if st.button("Show Data"):
-        conn = get_db_connection()
-        if conn:
-            try:
-                # Show only the first 10 rows from the selected table
-                query = text(f"SELECT * FROM {selected_table} LIMIT 10")
-                df = pd.read_sql(query, conn)
-                st.dataframe(df)
-            except Exception as e:
-                st.error(f"Error fetching data: {e}")
-            finally:
-                conn.close()
+# ------------------------------- #
+# FUNCTION TO FETCH TABLE NAMES FOR A SELECTED SCHEMA
+# ------------------------------- #
+def get_table_names(schema):
+    conn = get_db_connection()
+    if conn:
+        try:
+            query = text(f"SELECT table_name FROM information_schema.tables WHERE table_schema=:schema")
+            result = conn.execute(query, {"schema": schema})
+            tables = [row[0] for row in result.fetchall()]
+            conn.close()
+            return tables
+        except Exception as e:
+            st.error(f"Error fetching table names: {e}")
+            return []
+    else:
+        return []
 # ------------------------------- #
 # MAIN APPLICATION
 # ------------------------------- #
