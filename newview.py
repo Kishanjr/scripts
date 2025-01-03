@@ -66,3 +66,20 @@ def database_view_page():
                         st.error(f"Error displaying data: {e}")
                     finally:
                         conn.close()
+
+# ------------------------------- #
+# MAIN APPLICATION
+# ------------------------------- #
+def main():
+    st.sidebar.title("Task Management Tool")
+    menu = st.sidebar.radio("Navigation", ["Database View", "Search Order", "Logout"])
+
+    if menu == "Database View":
+        database_view_page()
+    elif menu == "Search Order":
+        custom_query_page()
+    elif menu == "Logout":
+        st.session_state.clear()
+        st.write("You have been logged out. Please refresh the page to log in again.")
+        st.stop()
+
