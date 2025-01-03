@@ -79,17 +79,27 @@ def system_refresh_page():
 # ------------------------------- #
 def database_view_page():
     st.header("Database View")
-    conn = get_db_connection()
-    if conn:
-        try:
-            query = "SELECT * FROM my_table"  # Replace with your PostgreSQL table name
-            df = pd.read_sql(query, conn)
-            st.dataframe(df)  # Display the table in a DataFrame
-        except Exception as e:
-            st.error(f"Error executing query: {e}")
-        finally:
-            conn.close()
+    tables = get_table_names()
 
+    if not tables:
+        st.error("No tables found in the database.")
+        return
+
+    # Allow user to select a table
+    selected_table = st.selectbox("Select a Table:", tables)
+
+    if st.button("Show Data"):
+        conn = get_db_connection()
+        if conn:
+            try:
+                # Show only the first 10 rows from the selected table
+                query = text(f"SELECT * FROM {selected_table} LIMIT 10")
+                df = pd.read_sql(query, conn)
+                st.dataframe(df)
+            except Exception as e:
+                st.error(f"Error fetching data: {e}")
+            finally:
+                conn.close()
 # ------------------------------- #
 # MAIN APPLICATION
 # ------------------------------- #
