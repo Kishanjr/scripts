@@ -1,54 +1,69 @@
 import json
-import cx_Oracle
-import os
-from typing import Optional
+import oracledb
+import re
+from typing import Optional, Dict
 
 
-class OracleDBConnection:
-    def __init__(self, config_path: str):
+class OracleCustomConnection:
+    def __init__(self, config_json: Dict):
         """
-        Initialize database connection using JSON config file
+        Initialize database connection using custom JSON config format
         
         Args:
-            config_path (str): Path to JSON configuration file
+            config_json (Dict): Configuration dictionary
         """
-        self.config = self._load_config(config_path)
+        self.config = config_json.get('info', {})
         self.connection = None
+        self.connection_params = self._parse_jdbc_url()
         
-    def _load_config(self, config_path: str) -> dict:
-        """Load and validate database configuration from JSON file"""
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-                
-            required_keys = ['username', 'password', 'host', 'port', 'service_name']
-            if not all(key in config for key in required_keys):
-                raise ValueError(f"Config file must contain all required keys: {required_keys}")
-                
-            return config
-    
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Config file not found at: {config_path}")
-        except json.JSONDecodeError:
-            raise ValueError("Invalid JSON format in config file")
-            
+    def _parse_jdbc_url(self) -> Dict[str, str]:
+        """Parse JDBC URL to extract connection parameters"""
+        jdbc_url = self.config.get('customusrl', '')
+        
+        # Extract connection details from JDBC URL using regex
+        pattern = r"@\(description=\(address\s*=\s*\(protocol\s*=\s*tcp\)\(host\s*=\s*([^)]+)\)"
+        host_match = re.search(pattern, jdbc_url.lower())
+        
+        connection_params = {
+            'host': host_match.group(1) if host_match else None,
+            'user': self.config.get('user', ''),
+            'password': self.config.get('password', ''),
+            'driver_type': self.config.get('oradrivertype', 'thin'),
+            'kerberos': self.config.get('kerberos', 'false').lower() == 'true',
+            'os_authentication': self.config.get('os_autherntication', '').lower() == 'true'
+        }
+        
+        return connection_params
+        
     def connect(self) -> None:
         """Establish connection to Oracle database"""
         try:
-            dsn = cx_Oracle.makedsn(
-                host=self.config['host'],
-                port=self.config['port'],
-                service_name=self.config['service_name']
-            )
+            # Handle different authentication methods
+            if self.connection_params['os_authentication']:
+                # Use OS authentication
+                self.connection = oracledb.connect(mode=oracledb.AUTH_MODE_OS)
             
-            self.connection = cx_Oracle.connect(
-                user=self.config['username'],
-                password=self.config['password'],
-                dsn=dsn
-            )
+            elif self.connection_params['kerberos']:
+                # Use Kerberos authentication
+                raise NotImplementedError("Kerberos authentication not implemented in this version")
+            
+            else:
+                # Use regular authentication
+                if not self.config.get('customusrl'):
+                    raise ValueError("Custom URL is required for database connection")
+                
+                # For thick mode (uncomment if needed)
+                # oracledb.init_oracle_client()
+                
+                self.connection = oracledb.connect(
+                    user=self.connection_params['user'],
+                    password=self.connection_params['password'],
+                    dsn=self.config['customusrl'].replace('jdbc:oracle:thin:@', '')
+                )
+                
             print("Successfully connected to Oracle database")
             
-        except cx_Oracle.Error as error:
+        except oracledb.Error as error:
             raise Exception(f"Error connecting to Oracle database: {error}")
             
     def disconnect(self) -> None:
@@ -77,9 +92,9 @@ class OracleDBConnection:
             cursor.close()
             return results
             
-        except cx_Oracle.Error as error:
+        except oracledb.Error as error:
             raise Exception(f"Error executing query: {error}")
-
+            
     def __enter__(self):
         """Context manager enter"""
         self.connect()
