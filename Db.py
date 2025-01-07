@@ -1,41 +1,56 @@
-import oracledb
-import json
+import psycopg2
 
-# Create JSON configuration using json.dumps()
-config = json.dumps({
-    "host": "localhost",
-    "port": "1521",
-    "service_name": "orclpdb1",
-    "user": "myuser",
-    "password": "mypassword",
-    "encryption": "REQUIRED",
-    "encryption_algorithm": "AES256"
-})
+def update_jsonb_psycopg2(entity_id, spec_name, spec_value, entity_attributes):
+    """
+    Update a JSONB field in PostgreSQL using psycopg2 with parameter binding.
+    """
 
-# Load the JSON string back as a Python dictionary
-config_dict = json.loads(config)
-
-# Create the Oracle DSN (Data Source Name)
-dsn = f"{config_dict['host']}:{config_dict['port']}/{config_dict['service_name']}"
-
-# Establish the encrypted Oracle connection
-try:
-    conn = oracledb.connect(
-        user=config_dict["user"],
-        password=config_dict["password"],
-        dsn=dsn
+    # Your PostgreSQL Query with parameterized placeholders
+    query = """
+    WITH updated_json AS (
+        SELECT entity_id, jsonb_agg(
+            CASE 
+                WHEN elem->>'specName' = %s 
+                THEN jsonb_set(elem, '{specValue}', %s::jsonb)
+                ELSE elem
+            END
+        ) as updated_attributevalue
+        FROM svcinv.t_service_inventory, jsonb_array_elements(entity_attributes->'entityAttributes') as elem
+        WHERE entity_id = %s AND entity_type = 'LOCATION'
+        GROUP BY entity_id
     )
-    print("Connected successfully with encryption!")
+    UPDATE svcinv.t_service_inventory tni
+    SET entity_attributes = jsonb_set(entity_attributes, '{entityAttributes}', updated_json.updated_attributevalue)
+    FROM updated_json
+    WHERE tni.entity_id = updated_json.entity_id;
+    """
 
-    # Set encryption settings at the session level
-    with conn.cursor() as cursor:
-        cursor.execute(f"ALTER SESSION SET encryption = '{config_dict['encryption']}'")
-        cursor.execute(f"ALTER SESSION SET encryption_algorithm = '{config_dict['encryption_algorithm']}'")
+    # Establish database connection and execute the query
+    try:
+        conn = psycopg2.connect(
+            host="localhost",  # Change this
+            database="your_database",  # Change this
+            user="your_username",  # Change this
+            password="your_password"  # Change this
+        )
+        cur = conn.cursor()
 
-except oracledb.DatabaseError as e:
-    print(f"Error: {e}")
+        # Execute the query using safe parameter binding
+        cur.execute(query, (spec_name, f'"{spec_value}"', entity_id))
 
-finally:
-    if 'conn' in locals() and conn:
+        # Commit the transaction
+        conn.commit()
+        print("✅ JSONB update successful!")
+
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Error occurred: {e}")
+
+    finally:
+        # Close the cursor and connection
+        cur.close()
         conn.close()
-        print("Connection closed.")
+
+
+# Example Call
+update_jsonb_psycopg2("12345", "ROUTER_SIZE", "5", "entityAttributes")
