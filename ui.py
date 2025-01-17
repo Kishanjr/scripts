@@ -6,7 +6,7 @@ st.markdown("""
     }
 
     /* Adjust the width of the text input */
-    div[data-testid="stTextInput"] > div > input {
+    div[data-baseweb="input"] {
         width: 300px; /* Width of the text input */
     }
     </style>
