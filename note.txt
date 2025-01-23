@@ -1,0 +1,5 @@
+JIRA Story One-Liners
+Search Order Number: Implemented functionality to search orders using an order number and display Inventory ETL status.
+Search by Location ID: Added search, update, and resync capabilities using Location ID and spec values.
+Retry/Complete Connect Task: Enabled retry or completion of workflow tasks based on workflow case ID.
+Retrigger/Complete External Caller Task: Developed functionality to retrigger or complete external caller tasks.
