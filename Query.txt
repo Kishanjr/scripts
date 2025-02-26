@@ -1,0 +1,33 @@
+select d.app_id, count(*) as prev_month 
+from opsdb.ays_intake_view i
+join opsdb.domain_app_group d on d.ays_group_id = i.assignment_group
+where i.assignment_group in (
+    select ays_group from opsdb.domain_app_group 
+    where app_id in (
+        select vast_appl_id from opsdb.app_info 
+        where app_name in ('NAUTILUS')
+    )
+)
+and date(i.created_on) >= '2025-02-01'
+and opened_by not in ('Service Account- OneOps', 'Service Account HP Operations Manager i', 'New Relic')
+group by d.app_id;
+
+
+
+
+
+
+select date_trunc('month', created_on) as month, count(*) 
+from opsdb.ays_intake_view i
+where assignment_group in (
+    select ays_group from opsdb.domain_app_group 
+    where app_id in (
+        select vast_appl_id from opsdb.app_info 
+        where app_name in ('NAUTILUS')
+    )
+)
+and opened_by not in ('Service Account- OneOps', 'Service Account HP Operations Manager i', 'New Relic')
+and date(i.created_on) >= '2025-02-01'
+group by month
+order by 1 desc
+limit 12;
