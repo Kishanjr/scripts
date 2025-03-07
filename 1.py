@@ -1,50 +1,32 @@
-import psycopg2
-from psycopg2.extras import execute_values
+import pandas as pd
+import os
 
-# Database connection
-conn = psycopg2.connect(
-    dbname="your_db",
-    user="your_user",
-    password="your_password",
-    host="your_host",
-    port="your_port"
-)
-cursor = conn.cursor()
-
-# Accept multiple orders as input
-orders = []
-while True:
-    entity_type = input("Enter entity_type (or 'exit' to finish): ")
-    if entity_type.lower() == 'exit':
-        break
-    ticket = input("Enter ticket: ")
-    channel = input("Enter channel: ")
-    description = input("Enter description: ")
-    vast_id = input("Enter vast_id: ")
-    entity_value = input("Enter entity_value: ")
-
-    # Append as tuple
-    orders.append((entity_type, ticket, channel, description, vast_id, entity_value, "2024-12-23 07:25:00"))
-
-# If there are orders, insert them in bulk
-if orders:
-    query = """
-    INSERT INTO synapt_dev_db.usecase_metrics (
-        entity_type, ticket, channel, description, vast_id, entity_value, updated_time
-    )
-    VALUES %s
-    ON CONFLICT (entity_type, ticket, channel, description, vast_id)
-    DO UPDATE SET 
-        entity_value = EXCLUDED.entity_value,
-        updated_time = EXCLUDED.updated_time;
-    """
+def csvs_to_excel(csv_folder, output_file):
+    # List only files in the folder that end with .csv (case insensitive)
+    csv_files = [
+        f for f in os.listdir(csv_folder)
+        if f.lower().endswith('.csv') and os.path.isfile(os.path.join(csv_folder, f))
+    ]
     
-    # Use execute_values for bulk insertion
-    execute_values(cursor, query, orders)
-    conn.commit()
+    if not csv_files:
+        print("No CSV files found in the folder.")
+        return
 
-    print(f"{len(orders)} records inserted/updated successfully.")
+    with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+        for csv_file in csv_files:
+            file_path = os.path.join(csv_folder, csv_file)
+            # Use file name without extension as sheet name (max 31 characters for Excel)
+            sheet_name = os.path.splitext(csv_file)[0][:31]
+            try:
+                df = pd.read_csv(file_path)
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                print(f"Converted {csv_file} to sheet '{sheet_name}'")
+            except Exception as e:
+                print(f"Failed to convert {csv_file}: {e}")
 
-# Close the connection
-cursor.close()
-conn.close()
+if __name__ == "__main__":
+    # Specify the folder containing your CSV files (use '.' for current directory)
+    folder = "."
+    # Name of the output Excel workbook
+    output = "combined.xlsx"
+    csvs_to_excel(folder, output)
