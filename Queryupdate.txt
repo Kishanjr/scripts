@@ -1,0 +1,45 @@
+import psycopg2
+
+def update_location(location_id):
+    try:
+        # Connect to your PostgreSQL database
+        connection = psycopg2.connect(
+            dbname="your_database",
+            user="your_user",
+            password="your_password",
+            host="your_host",
+            port="your_port"
+        )
+        cursor = connection.cursor()
+
+        # SQL update statement
+        query = """
+        UPDATE svcinv.etl_t_service_inventory
+        SET modification_date = (
+            SELECT select_criteria_end_dt + interval '1 minute' 
+            FROM etl.t_job_control_current tjcc 
+            WHERE app_name = 'CONN_TO_IASA_LOC_SVC'
+        )
+        WHERE entity_id = %s AND entity_type = 'LOCATION'
+        """
+
+        # Execute the query
+        cursor.execute(query, (location_id,))
+        connection.commit()
+
+        print("Update successful")
+        return cursor.rowcount
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return 0
+
+    finally:
+        # Close the cursor and connection
+        if cursor:
+            cursor.close()
+        if connection:
+            connection.close()
+
+# Example usage
+update_location(123)  # Replace 123 with your actual location_id
