@@ -1,92 +1,114 @@
+# Full Slack bot script updated to include:
+# - Dialog with order number input
+# - Checkboxes for multiple issue types
+# - Posts the submitted data as a message
+# - Opens a thread on the message
+
+updated_bot_code = """
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-import re
 
-# Setup app with your bot tokens
+# Initialize your app with bot token and socket mode handler
 app = App(token="xoxb-your-bot-token")
-user_state = {}
 
-# Static response dictionary
-RESPONSES = {
-    "sim_not_received": "Can you please confirm your delivery address?",
-    "wrong_plan": "Please share the plan you were expecting.",
-    "activation_delay": "When did you place the order? We'll check the timeline.",
-    "porting_issue": "Please tell us your current carrier.",
-    "other": "Please describe the issue you're facing.",
-}
-
-# Step 1: Detect order number and ask for issue type
-@app.message(re.compile(r"order\s*#(\d+)", re.IGNORECASE))
-def handle_order_message(message, say, context):
-    order_number = context['matches'][0]
-    user_id = message['user']
-    thread_ts = message.get('ts')
-
-    user_state[user_id] = {
-        "order_number": order_number,
-        "step": "issue_selection",
-        "thread_ts": thread_ts
-    }
-
+# Command to post "Contact Support" button
+@app.command("/post-support-button")
+def post_button(ack, say, command):
+    ack()
     say(
+        text="Need help with your telecom order?",
         blocks=[
-            {"type": "section", "text": {"type": "mrkdwn", "text": f"What issue are you facing with order *#{order_number}*?"}},
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": "*Need help with your telecom order?*"}
+            },
             {
                 "type": "actions",
                 "elements": [
-                    {"type": "button", "text": {"type": "plain_text", "text": "SIM not received"}, "value": "sim_not_received"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "Wrong plan"}, "value": "wrong_plan"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "Activation delay"}, "value": "activation_delay"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "Porting issue"}, "value": "porting_issue"},
-                    {"type": "button", "text": {"type": "plain_text", "text": "Other"}, "value": "other"}
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "📞 Contact Support"},
+                        "action_id": "open_support_form"
+                    }
                 ]
             }
-        ],
-        text="Please choose your issue.",
-        thread_ts=thread_ts
+        ]
     )
 
-# Step 2: Handle button click and ask follow-up
-@app.action(re.compile(r".+"))
-def handle_button_click(ack, body, say):
+# Action to open modal when button is clicked
+@app.action("open_support_form")
+def open_form(ack, body, client):
     ack()
-    user_id = body['user']['id']
-    issue_type = body['actions'][0]['value']
-    thread_ts = body['message'].get('thread_ts') or body['message']['ts']
+    trigger_id = body["trigger_id"]
 
-    if user_id in user_state:
-        user_state[user_id].update({
-            "issue_type": issue_type,
-            "step": "awaiting_followup",
-            "thread_ts": thread_ts
-        })
+    client.views_open(
+        trigger_id=trigger_id,
+        view={
+            "type": "modal",
+            "callback_id": "support_form_submission",
+            "title": {"type": "plain_text", "text": "Contact Support"},
+            "submit": {"type": "plain_text", "text": "Submit"},
+            "close": {"type": "plain_text", "text": "Cancel"},
+            "blocks": [
+                {
+                    "type": "input",
+                    "block_id": "order_block",
+                    "element": {
+                        "type": "plain_text_input",
+                        "action_id": "order_input"
+                    },
+                    "label": {"type": "plain_text", "text": "Order Number"}
+                },
+                {
+                    "type": "input",
+                    "block_id": "issue_block",
+                    "element": {
+                        "type": "checkboxes",
+                        "action_id": "issue_select",
+                        "options": [
+                            {"text": {"type": "plain_text", "text": "SIM not received"}, "value": "sim"},
+                            {"text": {"type": "plain_text", "text": "Wrong plan"}, "value": "plan"},
+                            {"text": {"type": "plain_text", "text": "Activation delay"}, "value": "delay"},
+                            {"text": {"type": "plain_text", "text": "Porting issue"}, "value": "port"},
+                        ]
+                    },
+                    "label": {"type": "plain_text", "text": "Select the issues you're facing"}
+                }
+            ]
+        }
+    )
 
-        followup_question = RESPONSES.get(issue_type, "Please explain the issue.")
-        say(followup_question, thread_ts=thread_ts)
+# Handle modal form submission
+@app.view("support_form_submission")
+def handle_form_submission(ack, body, client, view):
+    ack()
+    user = body["user"]["id"]
+    order_number = view["state"]["values"]["order_block"]["order_input"]["value"]
+    selected_options = view["state"]["values"]["issue_block"]["issue_select"]["selected_options"]
+    issue_types = [opt["text"]["text"] for opt in selected_options]
+    issue_text = "\\n• " + "\\n• ".join(issue_types)
 
-# Step 3: Handle user reply to follow-up question
-@app.message("")
-def handle_followup_message(message, say):
-    user_id = message['user']
-    text = message['text']
-    thread_ts = message.get('thread_ts') or message['ts']
+    # Post message in the channel
+    result = client.chat_postMessage(
+        channel="#your-private-channel",  # Change this to your actual channel
+        text=f":telephone_receiver: New support request from <@{user}>",
+        blocks=[
+            {"type": "section", "text": {"type": "mrkdwn", "text": f"*Order Number:* `{order_number}`\\n*Issues Reported:*{issue_text}"}}
+        ]
+    )
 
-    if user_id in user_state:
-        state = user_state[user_id]
-        if state.get("step") == "awaiting_followup":
-            order_number = state.get("order_number")
-            issue_type = state.get("issue_type")
-
-            say(
-                f"Thank you! We've recorded your issue: *{issue_type.replace('_', ' ').title()}*\nYour message: *{text}*\nOur team will follow up on order #{order_number}.",
-                thread_ts=state["thread_ts"]
-            )
-
-            del user_state[user_id]
-        else:
-            say("Please provide your order number (e.g., order #12345) to get started.", thread_ts=thread_ts)
-    else:
-        say("Please provide your order number (e.g., order #12345) to begin.", thread_ts=thread_ts)
+    # Start a thread on the posted message
+    client.chat_postMessage(
+        channel=result["channel"],
+        thread_ts=result["ts"],
+        text="Thanks for reaching out! Our team will follow up with you here."
+    )
 
 if __name__ == "__main__":
     SocketModeHandler(app, "xapp-your-app-level-token").start()
+"""
+
+with open("/mnt/data/contact_support_threaded_bot.py", "w") as f:
+    f.write(updated_bot_code)
+
+"/mnt/data/contact_support_threaded_bot.py"
