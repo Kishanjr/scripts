@@ -45,38 +45,19 @@ def open_form(ack, body, client):
         trigger_id=trigger_id,
         view={
             "type": "modal",
-            "callback_id": "support_form_submission",
-            "title": {"type": "plain_text", "text": "Contact Support"},
+            "callback_id": "test_modal",
+            "title": {"type": "plain_text", "text": "Test Modal"},
             "submit": {"type": "plain_text", "text": "Submit"},
             "close": {"type": "plain_text", "text": "Cancel"},
             "blocks": [
                 {
-                    "type": "input",
-                    "block_id": "order_block",
-                    "element": {
-                        "type": "plain_text_input",
-                        "action_id": "order_input"
-                    },
-                    "label": {"type": "plain_text", "text": "Order Number"}
-                },
-                {
-                    "type": "input",
-                    "block_id": "issue_block",
-                    "element": {
-                        "type": "checkboxes",
-                        "action_id": "issue_select",
-                        "options": [
-                            {"text": {"type": "plain_text", "text": "SIM not received"}, "value": "sim"},
-                            {"text": {"type": "plain_text", "text": "Wrong plan"}, "value": "plan"},
-                            {"text": {"type": "plain_text", "text": "Activation delay"}, "value": "delay"},
-                            {"text": {"type": "plain_text", "text": "Porting issue"}, "value": "port"},
-                        ]
-                    },
-                    "label": {"type": "plain_text", "text": "Select the issues you're facing"}
+                    "type": "section",
+                    "text": {"type": "plain_text", "text": "This is a test modal!"}
                 }
             ]
         }
     )
+
 
 # Handle modal form submission
 @app.view("support_form_submission")
