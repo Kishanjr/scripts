@@ -1,3 +1,5 @@
+
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import os
